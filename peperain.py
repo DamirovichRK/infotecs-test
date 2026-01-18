@@ -121,6 +121,7 @@ def show_results(results, output_filename=None):
         text_lines.append(f"  Ошибки соединения: {result['errors']}")
         
         if result['times']:
+            # ограничим время до мс форматированием
             text_lines.append(f"  Минимальное время: {result['min_time']:.3f} сек")
             text_lines.append(f"  Максимальное время: {result['max_time']:.3f} сек")
             text_lines.append(f"  Среднее время: {result['avg_time']:.3f} сек")
@@ -189,14 +190,47 @@ def main():
     if args.hosts and args.file:
         print("Ошибка: можно использовать только --hosts или --file, но не оба сразу")
         parser.print_help()
-        # ну и по логике первой проверке просто убьём 
+        # ну и по логике первой проверки просто убьём 
         sys.exit(1)
     
     # запросов не должно быть меньше нуля 
     if args.count <= 0:
         print("Ошибка: количество запросов должно быть больше 0")
         sys.exit(1)
-        # проверяем на некорректные символы в аргументах
+
+    # так называемая "проверка на дурака" который наверняка захочет сломать прогу
+    dangerous_chars = [';', '|', '&', '`', '$', '(', ')', '{', '}', '[', ']', '<', '>', '!']
+    
+    if args.hosts:
+        # проверяем хосты на опасные символы
+        for host in args.hosts.split(','):
+            host = host.strip()
+            for char in dangerous_chars:
+                if char in host:
+                    print(f"Ошибка: обнаружен некорректный символ '{char}' в хосте: {host}")
+                    sys.exit(1)
+    
+    if args.file:
+        # проверяем имя файла на опасные символы
+        for char in dangerous_chars:
+            if char in args.file:
+                print(f"Ошибка: обнаружен некорректный символ '{char}' в имени файла: {args.file}")
+                sys.exit(1)
+        
+        # проверяем что файл имеет безопасное расширение
+        if not args.file.endswith('.txt'):
+            print("Предупреждение: рекомендуется использовать файлы с расширением .txt")
+    
+    if args.output:
+        # проверяем имя выходного файла на опасные символы
+        for char in dangerous_chars:
+            if char in args.output:
+                print(f"Ошибка: обнаружен некорректный символ '{char}' в имени выходного файла: {args.output}")
+                sys.exit(1)
+        
+        # проверяем что выходной файл имеет безопасное расширение
+        if not args.output.endswith('.txt'):
+            print("Предупреждение: результаты будут сохранены в файл без стандартного расширения")
 
     # получаем список адресов
     urls = []
