@@ -1,3 +1,4 @@
+![alt text](https://github.com/DamirovichRK/infotecs-test/blob/master/Peperain.png "Logo Title Text 1")
 
 # HTTP Benchmark Tool
 
