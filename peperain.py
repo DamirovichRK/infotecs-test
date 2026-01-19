@@ -162,12 +162,9 @@ def show_results(results, output_filename=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Прога для тестирования доступности сервера')
+    parser = argparse.ArgumentParser(description='Утилита для тестирования доступности сервера')
     
     # fixme: в argparse лежит дефолтный help на английском, ваще без понятия как фиксить без костылей 
-    # костыль должен быть в таком виде: 
-    #parser.add_help(False) #???
-    #parser.add_argument(..."--help",...)
     
     parser.add_argument('-H', '--hosts', help='Адреса для тестирования через запятую')
     parser.add_argument('-C', '--count', type=int, default=1, help='Количество запросов на каждый хост')
