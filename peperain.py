@@ -528,7 +528,7 @@ def main():
     # предупредим, если расширения файла sus
     if args.file:
         is_valid, warning = validator.validate_file_extension(args.file)
-        if not is_valid:
+        if warning:
             print(f"Предупреждение: {warning}")
     
     if args.output:
