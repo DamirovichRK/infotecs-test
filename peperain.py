@@ -167,8 +167,6 @@ class InputValidator:
     def validate_url(url):
         url_lower = url.lower()
         
-        # проверяем что URL начинается с https://
-        # хотя по заданию вроде только https, но пусть будет оба
         if not url_lower.startswith(('https://')):
             return False, "URL должен начинаться с https://"
         
@@ -224,8 +222,8 @@ class InputValidator:
             return False, "Некорректный формат URL"
 
 class HTTPRequest:
+    # сейчас используется max_redirrect = 30 по дефолту
     def __init__(self, timeout=10.0):
-        # fixme: редирректы нужно учитывать, не знаю как дебажить, оставил их отключенными
         self.timeout = timeout
         self.results_lock = threading.Lock()
 
@@ -257,7 +255,7 @@ class HTTPRequest:
                 url, 
                 headers=headers,
                 timeout=self.timeout,
-                allow_redirects=False,
+                allow_redirects=True,
                 stream=True,
                 verify=True
             )
@@ -267,7 +265,9 @@ class HTTPRequest:
             elapsed = time.time() - start_time
             
             # 2хх коды означают успех, 3хх - перенаправления, 4хх-5хх - ошибки
-            if 200 <= response.status_code < 400:
+            if 200 <= response.status_code < 300:
+                return True, elapsed, response.status_code
+            elif 300 <= response.status_code < 400:
                 return True, elapsed, response.status_code
             else:
                 return False, elapsed, response.status_code
@@ -290,6 +290,7 @@ class HTTPRequest:
         # в этой версии вроде(?) пофикшено и теперь максимум потоков - 5 
         
         local_success = 0
+        local_redirrections = 0
         local_failed = 0
         local_errors = 0
         local_times = []
@@ -303,6 +304,9 @@ class HTTPRequest:
             elif status_code and 400 <= status_code < 600:
                 local_failed += 1
                 local_times.append(elapsed)
+            # вероятно из-за этого не считались редирректы в задании
+            elif 300 <= status_code < 400:
+                local_redirrections += 1
             else:
                 local_errors += 1
         
@@ -312,7 +316,8 @@ class HTTPRequest:
             'success': local_success,
             'failed': local_failed,
             'errors': local_errors,
-            'times': local_times
+            'times': local_times,
+            'redirrections': local_redirrections,
         }
         
         # считаем статистику по времени
@@ -478,9 +483,7 @@ def main():
         add_help=False
     )
     
-    # fixme: в argparse лежит дефолтный help на английском, ваще без понятия как фиксить без костылей 
-    
-    parser.add_argument("-h", '--help', action='store_true', help='Показать справку')
+    parser.add_argument("-help", '--help', action='store_true', help='Показать справку')
     parser.add_argument('-H', '--hosts', help='Адреса для тестирования через запятую')
     parser.add_argument('-C', '--count', type=int, default=1, help='Количество запросов на каждый хост')
     parser.add_argument('-F', '--file', help='Файл со списком адресов (каждый с новой строки)')
@@ -532,19 +535,6 @@ def main():
         is_valid, warning = validator.validate_file_extension(args.output)
         if not is_valid:
             print(f"Предупреждение: {warning}")
-    
-
-    # так называемая "проверка на дурака" который наверняка захочет сломать прогу
-    dangerous_chars = [';', '|', '&', '`', '$', '(', ')', '{', '}', '[', ']', '<', '>', '!']
-    
-    if args.hosts:
-        # проверяем хосты на опасные символы
-        for host in args.hosts.split(','):
-            host = host.strip()
-            for char in dangerous_chars:
-                if char in host:
-                    print(f"Ошибка: обнаружен некорректный символ '{char}' в хосыте: {host}")
-                    sys.exit(1)
     
     if args.file:
         # проверяем имя файла на опасные символы
